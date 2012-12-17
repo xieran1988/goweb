@@ -10,6 +10,9 @@ import (
 	"time"
 	"encoding/json"
 	"io/ioutil"
+	"bufio"
+	"io"
+	"os"
 )
 
 type Nav struct {
@@ -96,11 +99,15 @@ func sayhelloName(w http.ResponseWriter, r *http.Request) {
 		db.Content = first("Content")
 		db.Time = first("Time")
 
-		b, err := json.Marshal(db)
+		var b []byte
+		var err error
+		b, err = json.Marshal(db)
 		if err != nil {
 			return
 		}
-		ioutil.WriteFile("/usr/lib/pushdb", b, 0644)
+
+		ioutil.WriteFile("db", b, 0644)
+		cat("r.js", "db", "3.js")
 
 		http.Redirect(w, r, "/show?saveok", http.StatusFound)
 		return
@@ -109,7 +116,23 @@ func sayhelloName(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusFound)
 }
 
+func cat(name ...string) {
+	if len(name) <= 1 {
+		return
+	}
+	fw, _ := os.Create(name[0])
+	fw1 := bufio.NewWriter(fw)
+	for i := 1; i < len(name); i++ {
+		fr, _ := os.Open(name[i])
+		fr1 := bufio.NewReader(fr)
+		io.Copy(fw1, fr1)
+	}
+	fw1.Flush()
+}
+
 func main() {
+	cat("3.js", "1.js", "2.js")
+	os.Exit(0)
 	http.HandleFunc("/", sayhelloName)
 	err := http.ListenAndServe(":9090", nil)
 	if err != nil {
