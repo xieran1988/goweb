@@ -17,6 +17,7 @@ type Nav struct {
 type hash map[string]interface{}
 
 func sayhelloName(w http.ResponseWriter, r *http.Request) {
+
 	statics := []string{"/css", "/js"}
 	for _, p := range statics {
 		if strings.HasPrefix(r.URL.Path, p) {
@@ -36,36 +37,52 @@ func sayhelloName(w http.ResponseWriter, r *http.Request) {
 		return ""
 	}
 
-	login := func (h hash) string {
+	renderIndex := func (body string) string {
 		navtop := mustache.RenderFile("navtop.html",
-			hash{ "title": "world" },
-			hash{ "nav": []Nav{ {"1","2"}, {"3","4"} } },
+			hash{ "title": "广告平台" },
+//			hash{ "nav": []Nav{ {"1","2"}, {"3","4"} } },
 		)
-		login := mustache.RenderFile("login.html", h)
-		index := mustache.RenderFile("index.html", hash{"navtop":navtop, "login":login}, h)
+		index := mustache.RenderFile("index.html", hash{
+			"navtop":navtop,
+			"body":body,
+		})
 		return index
 	}
 
 	if strings.HasPrefix(r.URL.Path, "/login") {
+		body := mustache.RenderFile("login.html")
+		index := renderIndex(body)
+		fmt.Fprintf(w, index)
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/post-login") {
 		user := first("user")
 		pass := first("pass")
 		if user != "admin" && pass != "admin" {
-			fmt.Fprintf(w, login(hash{"tips":"登录失败"}))
+			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
 		cookie := http.Cookie{Name: "user", Value: user, Expires: time.Now().Add(10*time.Hour)}
 		http.SetCookie(w, &cookie)
-		fmt.Fprintf(w, user, pass)
+		http.Redirect(w, r, "/show", http.StatusFound)
 		return
 	}
 
-	if strings.HasPrefix(r.URL.Path, "/form") {
+	if strings.HasPrefix(r.URL.Path, "/show") {
+		form := mustache.RenderFile("show.html")
+		index := renderIndex(form)
+		fmt.Fprintf(w, index)
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/post-show") {
 		content := first("content")
 		fmt.Fprintf(w, content)
 		return
 	}
 
-	fmt.Fprintf(w, login(hash{}))
+	http.Redirect(w, r, "/login", http.StatusFound)
 }
 
 func main() {
