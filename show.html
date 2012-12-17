@@ -1,10 +1,18 @@
 
-<div class="container-fluid" align="center" style="padding-top:100px;">
+<div class="span3" align="center" >
 	<form class="form-horizontal" method=post action="/post-show">
+
 	<div class="control-group">
-		<label class="control-label">广告内容</label>
+		<label class="control-label">推送日期</label>
 		<div class="controls">
-			<textarea name="content" rows="3"></textarea>
+			<input name="Time" type=text class=datepicker value={{Time}}></input>
+		</div>
+	</div>
+
+	<div class="control-group">
+		<label class="control-label">推送内容</label>
+		<div class="controls">
+			<textarea name="Content" rows="8" >{{Content}}</textarea>
 		</div>
 	</div>
 	<button type="submit" class="btn">提交</button>

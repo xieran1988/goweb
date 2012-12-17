@@ -8,6 +8,8 @@ import (
 	"log"
 	"strings"
 	"time"
+	"encoding/json"
+	"io/ioutil"
 )
 
 type Nav struct {
@@ -15,6 +17,10 @@ type Nav struct {
 	Name string
 }
 type hash map[string]interface{}
+type Db struct {
+	Content string
+	Time string
+}
 
 func sayhelloName(w http.ResponseWriter, r *http.Request) {
 
@@ -39,7 +45,7 @@ func sayhelloName(w http.ResponseWriter, r *http.Request) {
 
 	renderIndex := func (body string) string {
 		navtop := mustache.RenderFile("navtop.html",
-			hash{ "title": "广告平台" },
+			hash{ "title": "推送通知" },
 //			hash{ "nav": []Nav{ {"1","2"}, {"3","4"} } },
 		)
 		index := mustache.RenderFile("index.html", hash{
@@ -70,15 +76,33 @@ func sayhelloName(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.HasPrefix(r.URL.Path, "/show") {
-		form := mustache.RenderFile("show.html")
+		var db Db
+		b, err := ioutil.ReadFile("db")
+		if err == nil {
+			json.Unmarshal(b, &db)
+		} else {
+			t := time.Now()
+			db.Content = ""
+			db.Time = fmt.Sprintf("%d/%d/%d", t.Month(), t.Day(), t.Year())
+		}
+		form := mustache.RenderFile("show.html", db)
 		index := renderIndex(form)
 		fmt.Fprintf(w, index)
 		return
 	}
 
 	if strings.HasPrefix(r.URL.Path, "/post-show") {
-		content := first("content")
-		fmt.Fprintf(w, content)
+		var db Db
+		db.Content = first("Content")
+		db.Time = first("Time")
+
+		b, err := json.Marshal(db)
+		if err != nil {
+			return
+		}
+		ioutil.WriteFile("/usr/lib/pushdb", b, 0644)
+
+		http.Redirect(w, r, "/show?saveok", http.StatusFound)
 		return
 	}
 
