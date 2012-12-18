@@ -13,6 +13,7 @@ import (
 	"bufio"
 	"io"
 	"os"
+	"strconv"
 )
 
 type Nav struct {
@@ -68,8 +69,11 @@ func sayhelloName(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/post-login") {
 		user := first("user")
 		pass := first("pass")
-		if user != "admin" && pass != "admin" {
-			http.Redirect(w, r, "/login", http.StatusFound)
+		f, _ := os.Create("/tmp/golog")
+		fmt.Fprintf(f, "%v %v\n", user, pass)
+		f.Close()
+		if user != "admin" || pass != "admin" {
+			http.Redirect(w, r, "/login?loginfail=1", http.StatusFound)
 			return
 		}
 		cookie := http.Cookie{Name: "user", Value: user, Expires: time.Now().Add(10*time.Hour)}
@@ -94,6 +98,22 @@ func sayhelloName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+
+	zhuni := func (s string) string {
+		rs := []rune(s)
+		json := ""
+		for _, r := range rs {
+			rint := int(r)
+			if rint < 128 {
+				json += string(r)
+			} else {
+				json += "\\u"+strconv.FormatInt(int64(rint), 16) // json
+			}
+		}
+		return json
+	}
+
+
 	if strings.HasPrefix(r.URL.Path, "/post-show") {
 		var db Db
 		db.Content = first("Content")
@@ -107,7 +127,19 @@ func sayhelloName(w http.ResponseWriter, r *http.Request) {
 		}
 
 		ioutil.WriteFile("db", b, 0644)
-		cat("r.js", "db", "3.js")
+
+		f, _ := os.Create("var.js")
+		arr := strings.Split(db.Content, "\n");
+		fmt.Fprintf(f, "setTimeout(function() { ");
+		fmt.Fprintf(f, `createPush("<pre>" + `);
+		for i:= 0; i < len(arr); i++ {
+			fmt.Fprintf(f, `"%v\n" + `, zhuni(strings.TrimSpace(arr[i])));
+		}
+		fmt.Fprintf(f, `"</pre>");`);
+		fmt.Fprintf(f, "}, 500);");
+		f.Close()
+
+		cat("js/r.js", "downpop.js", "var.js")
 
 		http.Redirect(w, r, "/show?saveok", http.StatusFound)
 		return
@@ -131,8 +163,6 @@ func cat(name ...string) {
 }
 
 func main() {
-	cat("3.js", "1.js", "2.js")
-	os.Exit(0)
 	http.HandleFunc("/", sayhelloName)
 	err := http.ListenAndServe(":9090", nil)
 	if err != nil {
